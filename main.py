@@ -17,7 +17,7 @@ def start_app():
     # print()
     db.init_db(app=app, **env.dict())
     get_session = db.session
-    session = next(get_session)
+    session = next(get_session()) # 제너레이터
     print(session.query(text("select 1")))
 
     # app.include_router(user, prefix="/users", tags=["Users"])
