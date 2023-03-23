@@ -6,7 +6,7 @@ from sqlalchemy import text
 
 from config import get_env
 from app.db.connection import db
-# from app.api.user_api import user
+from app.api.user_api import user
 
 # 앱을 실행
 def start_app():
@@ -20,7 +20,7 @@ def start_app():
     session = next(get_session()) # 제너레이터
     print(session.query(text("select 1")))
 
-    # app.include_router(user, prefix="/users", tags=["Users"])
+    app.include_router(user, prefix="/users", tags=["Users"])
     return app
 
 
