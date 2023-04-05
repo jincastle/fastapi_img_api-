@@ -1,9 +1,12 @@
 import enum
+from datetime import datetime
 
 from sqlalchemy import Column, String, ForeignKey, Integer, Boolean, DateTime, Enum
 from sqlalchemy.orm import relationship, Session
 
 from app.models.base_model import Base
+from app.utils.auth_utils import hash_password, create_token, decode_token
+from config import get_env
 
 
 class UserStatus(str, enum.Enum):
@@ -21,6 +24,54 @@ class Users(Base):
     is_admin = Column(Boolean, nullable=False, default=False)
     api_keys = relationship("APIKeys", back_populates="users")
     pay_plans = relationship("PayPlans", backref="users")
+
+    def __init__(self, email, pw, payplan_id=None, is_admin=False):
+        self.email = email
+        self.pw = hash_password(pw)
+        self.payplan_id = payplan_id if payplan_id else 1
+        self.is_admin = is_admin
+
+    @classmethod
+    def get(cls, session: Session, id: int = None, **kwargs):
+        if id:
+            return session.query(cls).filter_by(id=id, **kwargs).first()
+        return session.query(cls).filter_by(**kwargs).first()
+
+    @classmethod
+    def get_by_email(cls, session: Session, email: str):
+        return session.query(cls).filter_by(email=email).first()
+
+    @classmethod
+    def update(cls, session: Session, id: int, **kwargs):
+        session.query(cls).filter_by(id=id).update(kwargs)
+        session.commit()
+
+    def get_token(self):
+        return {
+            "access_token": create_token(
+                data=dict(id=self.id, email=self.email, staff=self.is_admin),
+                delta=get_env().ACCESS_TOKEN_EXPIRE_MINUTES,
+            ),
+            "refresh_token": create_token(
+                data=dict(id=self.id),
+                delta=get_env().REFRESH_TOKEN_EXPIRE_MINUTES,
+            ),
+        }
+
+    def token_refresh(self, refresh_token: str):
+        refresh_payload = decode_token(refresh_token)
+        now = int(datetime.utcnow().timestamp())
+        if now - refresh_payload["iat"] < get_env().REFRESH_TOKEN_EXPIRE_MINUTES * 60 / 2:
+            return {
+                "access_token": create_token(
+                    data=dict(id=self.id, email=self.email, staff=self.is_admin),
+                    delta=get_env().ACCESS_TOKEN_EXPIRE_MINUTES,
+                ),
+                "refresh_token": refresh_token,
+            }
+        else:
+            return self.get_token()
+
 
 
 class APIKeys(Base):
