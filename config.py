@@ -16,6 +16,7 @@ class Settings(BaseSettings):
 
     ALLOW_SITE = ["*"]
     TRUSTED_HOSTS = ["*"]
+    # JWT
     JWT_ALGORITHM = "HS256"
     JWT_SECRET_KEY = os.getenv("JWT_SECRET", "imizi-secret")
     ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 1  # one day
